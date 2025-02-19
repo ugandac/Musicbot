@@ -790,9 +790,66 @@ ${metadata.desc}`;
 
           return
         }
+        if (conf.AUTO_REACT === "yes") {
+      zk.ev.on("messages.upsert", async (m) => {
+        const { messages } = m;
+        let emojis = [];
+        const emojiFilePath = path.resolve(__dirname, 'database', 'emojis.json');
 
-        
-        //événement contact
+        try {
+          const data = fs.readFileSync(emojiFilePath, 'utf8');
+          emojis = JSON.parse(data);
+        } catch (error) {
+          console.error('Error reading emojis file:', error);
+          return;
+        }
+
+        for (const message of messages) {
+          if (!message.key.fromMe) {
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            await zk.sendMessage(message.key.remoteJid, {
+              react: {
+                text: randomEmoji,
+                key: message.key
+              }
+            });
+          }
+        }
+      });
+    }
+
+    let lastReactionTime = 0;
+    const loveEmojis = ["❤️", "💖", "💘", "💝", "💓", "💌", "💕", "😎", "🔥", "💥", "💯", "✨", "🌟", "🌈", "⚡", "💎", "🌀", "👑", "🎉", "🎊", "🦄", "👽", "🛸", "🚀", "🦋", "💫", "🍀", "🎶", "🎧", "🎸", "🎤", "🏆", "🏅", "🌍", "🌎", "🌏", "🎮", "🎲", "💪", "🏋️", "🥇", "👟", "🏃", "🚴", "🚶", "🏄", "⛷️", "🕶️", "🧳", "🍿", "🥂", "🍻", "🍷", "🍸", "🥃", "🍾", "🎯", "⏳", "🎁", "🎈", "🎨", "🌻", "🌸", "🌺", "🌹", "🌼", "🌞", "🌝", "🌜", "🌙", "🌚", "🍀", "🌱", "🍃", "🍂", "🌾", "🐉", "🐍", "🦓", "🦄", "🦋", "🦧", "🦘", "🦨", "🦡", "🐉", "🐅", "🐆", "🐓", "🐢", "🐊", "🐠", "🐟", "🐡", "🦑", "🐙", "🦀", "🐬", "🦕", "🦖", "🐾", "🐕", "🐈", "🐇", "🐾"];
+
+    if (conf.AUTO_LIKE_STATUS === "yes") {
+      console.log("AUTO_LIKE_STATUS is enabled. Listening for status updates...");
+      zk.ev.on("messages.upsert", async (m) => {
+        const { messages } = m;
+        for (const message of messages) {
+          if (message.key && message.key.remoteJid === "status@broadcast") {
+            const now = Date.now();
+            if (now - lastReactionTime < 5000) {
+              continue;
+            }
+
+            const keith = zk.user && zk.user.id ? zk.user.id.split(":")[0] + "@s.whatsapp.net" : null;
+            if (!keith) continue;
+
+            const randomLoveEmoji = loveEmojis[Math.floor(Math.random() * loveEmojis.length)];
+            await zk.sendMessage(message.key.remoteJid, {
+              react: {
+                key: message.key,
+                text: randomLoveEmoji
+              }
+            });
+
+            lastReactionTime = Date.now();
+            console.log(`Successfully reacted to status update by ${message.key.remoteJid} with ${randomLoveEmoji}`);
+
+            await delay(2000); // 2-second delay between reactions
+          }
+     
+         //événement contact
         zk.ev.on("contacts.upsert", async (contacts) => {
             const insertContact = (newContact) => {
                 for (const contact of newContact) {
